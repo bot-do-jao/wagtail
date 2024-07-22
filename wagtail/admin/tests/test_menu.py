@@ -430,17 +430,22 @@ class TestMenuRendering(WagtailTestUtils, TestCase):
 class TestMenu(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
-        User = get_user_model()  # Usando o modelo de usuário personalizado
+        User = get_user_model()
         self.user = User.objects.create_user(username='testuser', password='12345')
         self.request = self.factory.get('/admin/')
-        self.request.user = self.user  # Associando o usuário à requisição
+        self.request.user = self.user
 
     def test_menu_items_for_request_with_construct_hook(self):
         menu = Menu(register_hook_name="register_admin_menu_item", construct_hook_name="construct_main_menu")
         menu_item = MenuItem(label="Test", url="/test")
         menu.initial_menu_items = [menu_item]
-        
-        items = menu.menu_items_for_request(self.request)
+
+        def mock_construct_hook(request, items):
+            items[:] = [item for item in items if item.url == "/test"]
+
+        with hooks.register_temporarily([("construct_main_menu", mock_construct_hook)]):
+            items = menu.menu_items_for_request(self.request)
+
         self.assertEqual(len(items), 1)
         self.assertTrue(items[0].is_shown(self.request))
 
@@ -448,26 +453,53 @@ class TestMenu(TestCase):
         menu = Menu(register_hook_name="register_admin_menu_item")
         menu_item = MenuItem(label="Test", url="/test")
         menu.initial_menu_items = [menu_item]
-        
-        items = menu.menu_items_for_request(self.request)
-        self.assertEqual(len(items), 1)
-        self.assertTrue(items[0].is_shown(self.request))
+
+        # Overriding hooks to ensure no hooks are registered
+        with hooks.register_temporarily([]):
+            # Also clear any globally registered menu items
+            original_hooks = hooks._hooks.get("register_admin_menu_item", [])
+            hooks._hooks["register_admin_menu_item"] = []
+
+            try:
+                items = menu.menu_items_for_request(self.request)
+                self.assertEqual(len(items), 1)
+                self.assertTrue(items[0].is_shown(self.request))
+            finally:
+                hooks._hooks["register_admin_menu_item"] = original_hooks
 
     def test_menu_items_for_request_with_hidden_item(self):
         menu = Menu(register_hook_name="register_admin_menu_item")
         hidden_menu_item = MenuItem(label="Hidden", url="/hidden")
         hidden_menu_item.is_shown = lambda request: False  # Overriding the method to simulate a hidden item
         menu.initial_menu_items = [hidden_menu_item]
-        
-        items = menu.menu_items_for_request(self.request)
-        self.assertEqual(len(items), 0)
+
+        # Overriding hooks to ensure no hooks are registered
+        with hooks.register_temporarily([]):
+            # Also clear any globally registered menu items
+            original_hooks = hooks._hooks.get("register_admin_menu_item", [])
+            hooks._hooks["register_admin_menu_item"] = []
+
+            try:
+                items = menu.menu_items_for_request(self.request)
+                self.assertEqual(len(items), 0)
+            finally:
+                hooks._hooks["register_admin_menu_item"] = original_hooks
 
     def test_menu_items_for_request_with_visible_item(self):
         menu = Menu(register_hook_name="register_admin_menu_item")
         visible_menu_item = MenuItem(label="Visible", url="/visible")
         visible_menu_item.is_shown = lambda request: True  # Overriding the method to simulate a visible item
         menu.initial_menu_items = [visible_menu_item]
-        
-        items = menu.menu_items_for_request(self.request)
-        self.assertEqual(len(items), 1)
-        self.assertTrue(items[0].is_shown(self.request))
+
+        # Overriding hooks to ensure no hooks are registered
+        with hooks.register_temporarily([]):
+            # Also clear any globally registered menu items
+            original_hooks = hooks._hooks.get("register_admin_menu_item", [])
+            hooks._hooks["register_admin_menu_item"] = []
+
+            try:
+                items = menu.menu_items_for_request(self.request)
+                self.assertEqual(len(items), 1)
+                self.assertTrue(items[0].is_shown(self.request))
+            finally:
+                hooks._hooks["register_admin_menu_item"] = original_hooks
