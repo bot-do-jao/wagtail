@@ -1,6 +1,7 @@
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from django.utils import translation
+from django.contrib.auth import get_user_model
 
 from wagtail import hooks
 from wagtail.admin.menu import (
@@ -424,3 +425,49 @@ class TestMenuRendering(WagtailTestUtils, TestCase):
         # We want the name to be consistent across languages, so this test will
         # fail if the label is translated.
         self.assertFalse(expected - names)
+        
+        
+class TestMenu(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+        User = get_user_model()  # Usando o modelo de usuário personalizado
+        self.user = User.objects.create_user(username='testuser', password='12345')
+        self.request = self.factory.get('/admin/')
+        self.request.user = self.user  # Associando o usuário à requisição
+
+    def test_menu_items_for_request_with_construct_hook(self):
+        menu = Menu(register_hook_name="register_admin_menu_item", construct_hook_name="construct_main_menu")
+        menu_item = MenuItem(label="Test", url="/test")
+        menu.initial_menu_items = [menu_item]
+        
+        items = menu.menu_items_for_request(self.request)
+        self.assertEqual(len(items), 1)
+        self.assertTrue(items[0].is_shown(self.request))
+
+    def test_menu_items_for_request_without_construct_hook(self):
+        menu = Menu(register_hook_name="register_admin_menu_item")
+        menu_item = MenuItem(label="Test", url="/test")
+        menu.initial_menu_items = [menu_item]
+        
+        items = menu.menu_items_for_request(self.request)
+        self.assertEqual(len(items), 1)
+        self.assertTrue(items[0].is_shown(self.request))
+
+    def test_menu_items_for_request_with_hidden_item(self):
+        menu = Menu(register_hook_name="register_admin_menu_item")
+        hidden_menu_item = MenuItem(label="Hidden", url="/hidden")
+        hidden_menu_item.is_shown = lambda request: False  # Overriding the method to simulate a hidden item
+        menu.initial_menu_items = [hidden_menu_item]
+        
+        items = menu.menu_items_for_request(self.request)
+        self.assertEqual(len(items), 0)
+
+    def test_menu_items_for_request_with_visible_item(self):
+        menu = Menu(register_hook_name="register_admin_menu_item")
+        visible_menu_item = MenuItem(label="Visible", url="/visible")
+        visible_menu_item.is_shown = lambda request: True  # Overriding the method to simulate a visible item
+        menu.initial_menu_items = [visible_menu_item]
+        
+        items = menu.menu_items_for_request(self.request)
+        self.assertEqual(len(items), 1)
+        self.assertTrue(items[0].is_shown(self.request))
