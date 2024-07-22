@@ -454,9 +454,7 @@ class TestMenu(TestCase):
         menu_item = MenuItem(label="Test", url="/test")
         menu.initial_menu_items = [menu_item]
 
-        # Overriding hooks to ensure no hooks are registered
         with hooks.register_temporarily([]):
-            # Also clear any globally registered menu items
             original_hooks = hooks._hooks.get("register_admin_menu_item", [])
             hooks._hooks["register_admin_menu_item"] = []
 
@@ -470,12 +468,10 @@ class TestMenu(TestCase):
     def test_menu_items_for_request_with_hidden_item(self):
         menu = Menu(register_hook_name="register_admin_menu_item")
         hidden_menu_item = MenuItem(label="Hidden", url="/hidden")
-        hidden_menu_item.is_shown = lambda request: False  # Overriding the method to simulate a hidden item
+        hidden_menu_item.is_shown = lambda request: False  
         menu.initial_menu_items = [hidden_menu_item]
 
-        # Overriding hooks to ensure no hooks are registered
         with hooks.register_temporarily([]):
-            # Also clear any globally registered menu items
             original_hooks = hooks._hooks.get("register_admin_menu_item", [])
             hooks._hooks["register_admin_menu_item"] = []
 
@@ -488,12 +484,10 @@ class TestMenu(TestCase):
     def test_menu_items_for_request_with_visible_item(self):
         menu = Menu(register_hook_name="register_admin_menu_item")
         visible_menu_item = MenuItem(label="Visible", url="/visible")
-        visible_menu_item.is_shown = lambda request: True  # Overriding the method to simulate a visible item
+        visible_menu_item.is_shown = lambda request: True 
         menu.initial_menu_items = [visible_menu_item]
 
-        # Overriding hooks to ensure no hooks are registered
         with hooks.register_temporarily([]):
-            # Also clear any globally registered menu items
             original_hooks = hooks._hooks.get("register_admin_menu_item", [])
             hooks._hooks["register_admin_menu_item"] = []
 
